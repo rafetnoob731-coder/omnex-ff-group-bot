@@ -1,0 +1,7 @@
+# OMNEX FF GROUP BOT · Accounts
+# Format: id=|uid=|password=|region=
+# Example:
+# 1=|4369584436|LABIB_AIRDROPS_WET87|BD
+# 2=|7975197636|353FB55EABCDEF123456|IND
+#
+# First valid line is primary (used by engine unless /use <id>)

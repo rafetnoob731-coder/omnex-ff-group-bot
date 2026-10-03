@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: omnex-ff-group-bot
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerCommand: python bot.py
+    healthCheckPath: /
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        sync: false
+      - key: PORT
+        value: "10000"
