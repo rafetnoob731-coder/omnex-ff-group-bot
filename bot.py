@@ -910,6 +910,18 @@ def run_flask():
 
 # ---------------------- MAIN BOT SYSTEM ----------------------
 
+def _split_host_port(value):
+    """Split 'host:port' safely. See TcP-FrEinD.py for why plain
+    split(':') raises "too many values to unpack" on IPv6 / proxy hosts."""
+    value = (value or "").strip()
+    if not value:
+        return "", ""
+    host, sep, port = value.rpartition(":")
+    if not sep:
+        return value, ""
+    return host.strip(), port.strip()
+
+
 async def MaiiiinE():
     global loop, key, iv, region, BOT_UID, TarGeT, acc_name, ACTIVE_ACC_ID
 
@@ -958,8 +970,12 @@ async def MaiiiinE():
     OnLinePorTs = LoGinDaTaUncRypTinG.Online_IP_Port
     ChaTPorTs = LoGinDaTaUncRypTinG.AccountIP_Port
 
-    OnLineiP, OnLineporT = OnLinePorTs.split(":")
-    ChaTiP, ChaTporT = ChaTPorTs.split(":")
+    OnLineiP, OnLineporT = _split_host_port(OnLinePorTs)
+    ChaTiP, ChaTporT = _split_host_port(ChaTPorTs)
+
+    if not (OnLineiP and OnLineporT) or not (ChaTiP and ChaTporT):
+        print(f"[OMNEX] Bad ports: online={OnLinePorTs!r} chat={ChaTPorTs!r}")
+        return None
 
     acc_name = LoGinDaTaUncRypTinG.AccountName
     print(ToKen)

@@ -202,6 +202,23 @@ async def xAuThSTarTuP(TarGeT, token, timestamp, key, iv):
     else: print('Unexpected length') ; headers = '0000000'
     return f"0115{headers}{uid_hex}{encrypted_timestamp}00000{encrypted_packet_length}{encrypted_packet}"
      
+def _split_host_port(value):
+    """Split 'host:port' safely.
+
+    str.split(':') into exactly two names raises "too many values to
+    unpack" whenever the address contains more than one colon (IPv6, or
+    a proxy-style address). rpartition takes the LAST colon as the port
+    separator, so extra colons stay in the host part where they belong.
+    """
+    value = (value or "").strip()
+    if not value:
+        return "", ""
+    host, sep, port = value.rpartition(":")
+    if not sep:
+        return value, ""
+    return host.strip(), port.strip()
+
+
 async def cHTypE(H):
     if not H: return 'Squid'
     elif H == 1: return 'CLan'
@@ -460,8 +477,11 @@ async def MaiiiinE():
     LoGinDaTaUncRypTinG = await DecRypTLoGinDaTa(LoGinDaTa)
     OnLinePorTs = LoGinDaTaUncRypTinG.Online_IP_Port
     ChaTPorTs = LoGinDaTaUncRypTinG.AccountIP_Port
-    OnLineiP , OnLineporT = OnLinePorTs.split(":")
-    ChaTiP , ChaTporT = ChaTPorTs.split(":")
+    OnLineiP, OnLineporT = _split_host_port(OnLinePorTs)
+    ChaTiP, ChaTporT = _split_host_port(ChaTPorTs)
+    if not (OnLineiP and OnLineporT) or not (ChaTiP and ChaTporT):
+        print(f"ErroR - Bad PorTs ! online={OnLinePorTs!r} chat={ChaTPorTs!r}")
+        return None
     acc_name = LoGinDaTaUncRypTinG.AccountName
     #print(acc_name)
     print(ToKen)
