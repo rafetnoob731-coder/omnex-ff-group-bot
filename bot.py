@@ -289,7 +289,7 @@ async def process_telegram_command(update):
             f"<i>{credit}</i>\n\n"
             f"Client · <code>OB55</code>\n"
             f"Version · <code>v1.1</code>\n"
-            f"Engine · <code>1.132.8</code>\n"
+            f"Engine · <code>1.132.9</code>\n"
             f"Unity · <code>2018.4.12f1</code>\n\n"
             f"Channel · {ch}\n"
             f"Dev · <b>OMNEX</b>"
@@ -483,7 +483,7 @@ async def send_main_menu(chat_id):
     await send_telegram_message(chat_id,
         f"<b>⚡ {brand}</b>\n"
         f"<i>{credit}</i>\n"
-        f"<code>OB55 · v1.1 · 1.132.8</code>\n\n"
+        f"<code>OB55 · v1.1 · 1.132.9</code>\n\n"
         f"Name · <code>{acc_name or '—'}</code>\n"
         f"Target · <code>{TarGeT or '—'}</code>\n"
         f"Status · {'🟢 Online' if online_writer else '🔴 Connecting'}\n"
@@ -562,7 +562,7 @@ async def EncRypTMajoRLoGin(open_id, access_token):
     major_login.event_time = str(datetime.now())[:-7]
     major_login.game_name = "free fire"
     major_login.platform_id = 1
-    major_login.client_version = "1.132.8"
+    major_login.client_version = "1.132.9"
     major_login.system_software = "Android OS 13 / API-33 (TP1A.220624.014/CPH2095_11_C.22)"
     major_login.system_hardware = "Handheld"
     major_login.telecom_operator = "Verizon"
@@ -620,7 +620,7 @@ async def EncRypTMajoRLoGin(open_id, access_token):
     return  await encrypted_proto(string)
 
 async def MajorLogin(payload):
-    url = "https://loginbp.ggblueshark.com/MajorLogin"
+    url = "https://loginbp.ppmainecoonghj.com/MajorLogin"
     ssl_context = ssl.create_default_context()
     ssl_context.check_hostname = False
     ssl_context.verify_mode = ssl.CERT_NONE
@@ -896,7 +896,7 @@ def health_check():
         "engine": "OMNEX",
         "version": "v1.1",
         "client": "OB55",
-        "client_version": "1.132.8",
+        "client_version": "1.132.9",
         "bot": "online" if online_writer else "connecting",
         "service": CREDIT_INFO.get("brand", "OMNEX FF GROUP BOT"),
         "credit": CREDIT_INFO.get("credit_line", "Powered by OMNEX"),
@@ -1000,7 +1000,7 @@ async def MaiiiinE():
     os.system('clear')
     print(render('OMNEX', colors=['white', 'cyan'], align='center'))
     print(f"\n  {CREDIT_INFO.get('credit_line', 'Powered by OMNEX')}")
-    print(f"  Client : OB55  |  v1.132.8")
+    print(f"  Client : OB55  |  v1.132.9")
     print(f"  Target : {TarGeT}  |  Name : {acc_name}")
     print(f"  Status : ONLINE")
     print(f"  API    : /5?uid=UID  |  /6?uid=UID")

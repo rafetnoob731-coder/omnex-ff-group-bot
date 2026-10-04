@@ -36,7 +36,7 @@ def equie_emote(JWT,url):
         "Connection": "Keep-Alive",
         "Content-Type": "application/x-www-form-urlencoded",
         "Expect": "100-continue",
-        #"Host": "clientbp.ggblueshark.com",
+        #"Host": "clientbp.ppmainecoonghj.com",
         "ReleaseVersion": "OB55",
         "User-Agent": "Dalvik/2.1.0 (Linux; U; Android 13; CPH2095 Build/RKQ1.211119.001)",
         "X-GA": "v1 1",
@@ -71,7 +71,7 @@ def Requests_SPam(id):
 
 def GeT_Name(uid , Token):
     data = bytes.fromhex(EnC_AEs(f"08{EnC_Uid(uid , Tp = 'Uid')}1007"))
-    url = "https://clientbp.common.ggbluefox.com/GetPlayerPersonalShow"
+    url = "https://clientbp.ppmainecoonghj.com/GetPlayerPersonalShow"
     headers = {
         'X-Unity-Version': '2018.4.12f1',
         'ReleaseVersion': 'OB55',
@@ -80,7 +80,7 @@ def GeT_Name(uid , Token):
         'Authorization': f'Bearer {GeTToK()}',
         'Content-Length': '16',
         'User-Agent': 'Dalvik/2.1.0 (Linux; U; Android 13; CPH2095 Build/RKQ1.211119.001)',
-        'Host': 'clientbp.ggblueshark.com',
+        'Host': 'clientbp.ppmainecoonghj.com',
         'Connection': 'Keep-Alive',
         'Accept-Encoding': 'gzip'
     }
@@ -96,7 +96,7 @@ def GeT_Name(uid , Token):
             	  	
 def GeT_PLayer_InFo(uid , Token):
     data = bytes.fromhex(EnC_AEs(f"08{EnC_Uid(uid , Tp = 'Uid')}1007"))
-    url = "https://clientbp.common.ggbluefox.com/GetPlayerPersonalShow"
+    url = "https://clientbp.ppmainecoonghj.com/GetPlayerPersonalShow"
     headers = {
         'X-Unity-Version': '2018.4.12f1',
         'ReleaseVersion': 'OB55',
@@ -105,7 +105,7 @@ def GeT_PLayer_InFo(uid , Token):
         'Authorization': f'Bearer {GeTToK()}',
         'Content-Length': '16',
         'User-Agent': 'Dalvik/2.1.0 (Linux; U; Android 13; CPH2095 Build/RKQ1.211119.001)',
-        'Host': 'clientbp.ggblueshark.com',
+        'Host': 'clientbp.ppmainecoonghj.com',
         'Connection': 'Keep-Alive',
         'Accept-Encoding': 'gzip'}
     response = requests.post(url , headers=headers , data=data ,verify=False)
@@ -185,7 +185,7 @@ def GeT_PLayer_InFo(uid , Token):
     
 def DeLet_Uid(id , Tok):
     print(f' Done FuckinG > {id} ')
-    url = 'https://clientbp.common.ggbluefox.com/RemoveFriend'
+    url = 'https://clientbp.ppmainecoonghj.com/RemoveFriend'
     headers = {
         'X-Unity-Version': '2018.4.12f1',
         'ReleaseVersion': 'OB55',
@@ -194,7 +194,7 @@ def DeLet_Uid(id , Tok):
         'Authorization': f'Bearer {Tok}',
         'Content-Length': '16',
         'User-Agent': 'Dalvik/2.1.0 (Linux; U; Android 13; CPH2095 Build/RKQ1.211119.001)',
-        'Host': 'clientbp.ggblueshark.com',
+        'Host': 'clientbp.ppmainecoonghj.com',
         'Connection': 'Keep-Alive',
         'Accept-Encoding': 'gzip'}
     data = bytes.fromhex(EnC_AEs(f"08a7c4839f1e10{EnC_Uid(id , Tp = 'Uid')}"))
