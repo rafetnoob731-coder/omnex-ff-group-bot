@@ -622,15 +622,15 @@ async def EncRypTMajoRLoGin(open_id, access_token, region="OTHERS"):
     major_login = MajoRLoGinrEq_pb2.MajorLogin()
     major_login.event_time = str(datetime.now())[:-7]
     major_login.game_name = "free fire"
-    major_login.platform_id = 1
+    major_login.platform_id = 4
     major_login.client_version = client_version(region)
-    major_login.system_software = "Android OS 13 / API-33 (TP1A.220624.014/CPH2095_11_C.22)"
-    major_login.system_hardware = "Handheld"
-    major_login.telecom_operator = "Verizon"
-    major_login.network_type = "WIFI"
-    major_login.screen_width = 1920
-    major_login.screen_height = 1080
-    major_login.screen_dpi = "280"
+    major_login.system_software = "2019116753"
+    major_login.system_hardware = "Android OS 12 / API-31 (SP1A.210812.016)"
+    major_login.telecom_operator = "Handheld"
+    major_login.network_type = "Realme RMX3630"
+    major_login.screen_width = 1280
+    major_login.screen_height = 720
+    major_login.screen_dpi = "240"
     major_login.processor_details = "ARM64 FP ASIMD AES VMH | 2865 | 4"
     major_login.memory = 3003
     major_login.gpu_renderer = "Adreno (TM) 640"
@@ -997,13 +997,15 @@ async def MaiiiinE():
     OAUTH_RATE_LIMITED = False
     OAUTH_RETRY_AFTER = 0
 
-    open_id = access_token = None
     acc = None
+    MajoRLoGinauTh = None
+
     for attempt, candidate in enumerate(candidates):
         Uid, Pw = candidate["uid"], candidate["password"]
         cand_region = candidate.get("region", "OTHERS")
-        print(f"[OMNEX] Using account id={candidate['id']} uid={Uid} region={candidate['region']}"
-              + (f"  (attempt {attempt + 1}/{len(candidates)})" if attempt else ""))
+        label = f"id={candidate['id']} ({candidate['region']})"
+        print(f"[OMNEX] Trying account {label}"
+              + (f"  attempt {attempt + 1}/{len(candidates)}" if attempt else ""))
         print(f"[OMNEX] Region group {normalize_region(cand_region)} · client {client_host(cand_region)}")
 
         result = await GeNeRaTeAccEss(Uid, Pw)
@@ -1011,17 +1013,32 @@ async def MaiiiinE():
             print(f"[OMNEX] OAuth bad return type: {type(result).__name__} {result!r}")
             continue
         o_id, a_tok = result
-        if o_id and a_tok:
-            open_id, access_token = o_id, a_tok
-            acc = candidate
-            break
-        print(f"[OMNEX] OAuth failed for id={candidate['id']} ({candidate['region']}) — trying next")
-        if OAUTH_RATE_LIMITED:
-            # Throttled: hammering the other accounts makes it worse.
-            break
+        if not (o_id and a_tok):
+            print(f"[OMNEX] OAuth failed for {label} — trying next")
+            if OAUTH_RATE_LIMITED:
+                # Throttled: hammering the remaining accounts makes it worse.
+                break
+            continue
 
-    if not open_id or not access_token:
-        print("[OMNEX] All accounts failed OAuth")
+        # OAuth is not the only gate. An account can authenticate and still be
+        # rejected by MajorLogin, so the whole sequence must fall through.
+        try:
+            PyL = await EncRypTMajoRLoGin(o_id, a_tok, cand_region)
+            res = await MajorLogin(PyL, cand_region)
+        except Exception as e:
+            print(f"[OMNEX] Login error for {label}: {e} — trying next")
+            continue
+
+        if not res:
+            print(f"[OMNEX] MajorLogin rejected {label} (banned/unregistered) — trying next")
+            continue
+
+        acc = candidate
+        MajoRLoGinauTh = await DecRypTMajoRLoGin(res)
+        break
+
+    if acc is None or MajoRLoGinauTh is None:
+        print("[OMNEX] No account could complete login")
         return None
 
     ACTIVE_ACC_ID = str(acc["id"])
@@ -1029,13 +1046,6 @@ async def MaiiiinE():
     region = acc.get("region", "OTHERS")
     print(f"[OMNEX] Logged in via account id={acc['id']} region={acc['region']}")
 
-    PyL = await EncRypTMajoRLoGin(open_id, access_token, region)
-    MajoRLoGinResPonsE = await MajorLogin(PyL, region)
-    if not MajoRLoGinResPonsE:
-        print("TarGeT AccounT => BannEd / NoT ReGisTeReD !")
-        return None
-
-    MajoRLoGinauTh = await DecRypTMajoRLoGin(MajoRLoGinResPonsE)
     UrL = MajoRLoGinauTh.url
     print(UrL)
     region = MajoRLoGinauTh.region
