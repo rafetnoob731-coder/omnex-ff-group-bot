@@ -76,6 +76,10 @@ region = None
 TarGeT = None
 acc_name = None
 ACTIVE_ACC_ID = None
+# Set by GeNeRaTeAccEss when Garena answers 429, so the retry loop can back
+# off instead of hammering the endpoint and making the throttle worse.
+OAUTH_RATE_LIMITED = False
+OAUTH_RETRY_AFTER = 0
 #------------------------------------------#
 
 # ═══════════════════════════════════════════════════════════
@@ -170,6 +174,22 @@ def get_primary_account():
         if a:
             return a
     return accounts[0]
+
+
+def get_account_candidates():
+    """Primary account first, then the rest.
+
+    A broken primary (e.g. an IND account that OAuth rejects) must not stop
+    the bot when working BD accounts are sitting in acc.txt.
+    """
+    accounts = load_accounts()
+    if not accounts:
+        return []
+    primary = get_primary_account()
+    if not primary:
+        return accounts
+    others = [a for a in accounts if str(a.get("id")) != str(primary.get("id"))]
+    return [primary] + others
 
 def next_account_id(accounts):
     nums = []
@@ -558,6 +578,9 @@ async def GeNeRaTeAccEss(uid , password):
         "Connection": "close",
     }
     last_err = ""
+    global OAUTH_RATE_LIMITED, OAUTH_RETRY_AFTER
+    OAUTH_RATE_LIMITED = False
+    OAUTH_RETRY_AFTER = 0
     async with aiohttp.ClientSession() as session:
         for url in urls:
             try:
@@ -565,6 +588,16 @@ async def GeNeRaTeAccEss(uid , password):
                 headers["Host"] = url.split("/")[2]
                 async with session.post(url, headers=headers, data=data, ssl=False) as response:
                     body = await response.text()
+                    if response.status == 429:
+                        # Garena is throttling us. Remember it so the retry
+                        # loop can back off instead of making it worse.
+                        OAUTH_RATE_LIMITED = True
+                        try:
+                            OAUTH_RETRY_AFTER = int(response.headers.get("Retry-After", 0) or 0)
+                        except (TypeError, ValueError):
+                            OAUTH_RETRY_AFTER = 0
+                        last_err = "http_429"
+                        break
                     if response.status != 200:
                         last_err = f"http_{response.status}"
                         continue
@@ -953,29 +986,48 @@ def _split_host_port(value):
 async def MaiiiinE():
     global loop, key, iv, region, BOT_UID, TarGeT, acc_name, ACTIVE_ACC_ID
 
-    acc = get_primary_account()
-    if not acc:
+    candidates = get_account_candidates()
+    if not candidates:
         print("[OMNEX] No accounts in acc.txt — add with /add BD UID PASSWORD")
         print("[OMNEX] Format: id=|uid=|password=|region=")
         await asyncio.sleep(30)
         return None
 
-    Uid, Pw = acc["uid"], acc["password"]
-    ACTIVE_ACC_ID = str(acc["id"])
-    region = acc.get("region", "OTHERS")
-    print(f"[OMNEX] Using account id={acc['id']} uid={Uid} region={acc['region']}")
-    print(f"[OMNEX] Region group {normalize_region(region)} · client {client_host(region)}")
+    global OAUTH_RATE_LIMITED, OAUTH_RETRY_AFTER
+    OAUTH_RATE_LIMITED = False
+    OAUTH_RETRY_AFTER = 0
 
-    result = await GeNeRaTeAccEss(Uid, Pw)
-    if not isinstance(result, (tuple, list)) or len(result) != 2:
-        print(f"[OMNEX] OAuth bad return type: {type(result).__name__} {result!r}")
-        await asyncio.sleep(5)
-        return None
-    open_id, access_token = result
+    open_id = access_token = None
+    acc = None
+    for attempt, candidate in enumerate(candidates):
+        Uid, Pw = candidate["uid"], candidate["password"]
+        cand_region = candidate.get("region", "OTHERS")
+        print(f"[OMNEX] Using account id={candidate['id']} uid={Uid} region={candidate['region']}"
+              + (f"  (attempt {attempt + 1}/{len(candidates)})" if attempt else ""))
+        print(f"[OMNEX] Region group {normalize_region(cand_region)} · client {client_host(cand_region)}")
+
+        result = await GeNeRaTeAccEss(Uid, Pw)
+        if not isinstance(result, (tuple, list)) or len(result) != 2:
+            print(f"[OMNEX] OAuth bad return type: {type(result).__name__} {result!r}")
+            continue
+        o_id, a_tok = result
+        if o_id and a_tok:
+            open_id, access_token = o_id, a_tok
+            acc = candidate
+            break
+        print(f"[OMNEX] OAuth failed for id={candidate['id']} ({candidate['region']}) — trying next")
+        if OAUTH_RATE_LIMITED:
+            # Throttled: hammering the other accounts makes it worse.
+            break
+
     if not open_id or not access_token:
-        print("[OMNEX] Invalid account credentials / OAuth failed")
-        await asyncio.sleep(5)
+        print("[OMNEX] All accounts failed OAuth")
         return None
+
+    ACTIVE_ACC_ID = str(acc["id"])
+    Uid, Pw = acc["uid"], acc["password"]
+    region = acc.get("region", "OTHERS")
+    print(f"[OMNEX] Logged in via account id={acc['id']} region={acc['region']}")
 
     PyL = await EncRypTMajoRLoGin(open_id, access_token, region)
     MajoRLoGinResPonsE = await MajorLogin(PyL, region)
@@ -1045,7 +1097,9 @@ async def MaiiiinE():
     await asyncio.gather(task1, task2)
 
 async def StarTinG():
+    delay = 5
     while True:
+        waited = 0
         try:
             await asyncio.wait_for(MaiiiinE(), timeout=7 * 60 * 60)
         except asyncio.TimeoutError:
@@ -1056,7 +1110,14 @@ async def StarTinG():
             if "too many values to unpack" in str(e):
                 print("[OMNEX] Hint: OAuth returned a string instead of (open_id, access_token)")
             traceback.print_exc()
-            await asyncio.sleep(3)
+
+        if OAUTH_RATE_LIMITED:
+            waited = max(delay, OAUTH_RETRY_AFTER or 60)
+            print(f"[OMNEX] Garena rate limit (429) — waiting {waited:.0f}s before retrying")
+        else:
+            waited = delay
+        delay = min(delay * 2, 300)   # 5s, 10s, 20s … capped at 300s
+        await asyncio.sleep(waited)
 
 
 async def main():
