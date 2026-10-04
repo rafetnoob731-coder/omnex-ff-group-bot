@@ -557,12 +557,12 @@ async def GeNeRaTeAccEss(uid , password):
             access_token = data.get("access_token")
             return (open_id, access_token) if open_id and access_token else (None, None)
 
-async def EncRypTMajoRLoGin(open_id, access_token):
+async def EncRypTMajoRLoGin(open_id, access_token, region="OTHERS"):
     major_login = MajoRLoGinrEq_pb2.MajorLogin()
     major_login.event_time = str(datetime.now())[:-7]
     major_login.game_name = "free fire"
     major_login.platform_id = 1
-    major_login.client_version = "1.132.9"
+    major_login.client_version = client_version(region)
     major_login.system_software = "Android OS 13 / API-33 (TP1A.220624.014/CPH2095_11_C.22)"
     major_login.system_hardware = "Handheld"
     major_login.telecom_operator = "Verizon"
@@ -619,8 +619,8 @@ async def EncRypTMajoRLoGin(open_id, access_token):
     string = major_login.SerializeToString()
     return  await encrypted_proto(string)
 
-async def MajorLogin(payload):
-    url = "https://loginbp.ppmainecoonghj.com/MajorLogin"
+async def MajorLogin(payload, region="OTHERS"):
+    url = f"{server_url(region)}/MajorLogin"
     ssl_context = ssl.create_default_context()
     ssl_context.check_hostname = False
     ssl_context.verify_mode = ssl.CERT_NONE
@@ -934,15 +934,17 @@ async def MaiiiinE():
 
     Uid, Pw = acc["uid"], acc["password"]
     ACTIVE_ACC_ID = str(acc["id"])
+    region = acc.get("region", "OTHERS")
     print(f"[OMNEX] Using account id={acc['id']} uid={Uid} region={acc['region']}")
+    print(f"[OMNEX] Region group {normalize_region(region)} · client {client_host(region)}")
 
     open_id, access_token = await GeNeRaTeAccEss(Uid, Pw)
     if not open_id or not access_token:
         print("[OMNEX] Invalid account credentials")
         return None
 
-    PyL = await EncRypTMajoRLoGin(open_id, access_token)
-    MajoRLoGinResPonsE = await MajorLogin(PyL)
+    PyL = await EncRypTMajoRLoGin(open_id, access_token, region)
+    MajoRLoGinResPonsE = await MajorLogin(PyL, region)
     if not MajoRLoGinResPonsE:
         print("TarGeT AccounT => BannEd / NoT ReGisTeReD !")
         return None

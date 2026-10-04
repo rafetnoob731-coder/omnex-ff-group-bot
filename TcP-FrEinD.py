@@ -83,7 +83,7 @@ async def GeNeRaTeAccEss(uid , password):
             access_token = data.get("access_token")
             return (open_id, access_token) if open_id and access_token else (None, None)
 
-async def EncRypTMajoRLoGin(open_id, access_token):
+async def EncRypTMajoRLoGin(open_id, access_token, region="OTHERS"):
     major_login = MajoRLoGinrEq_pb2.MajorLogin()
     major_login.event_time = str(datetime.now())[:-7]
     major_login.game_name = "free fire"
@@ -145,8 +145,8 @@ async def EncRypTMajoRLoGin(open_id, access_token):
     string = major_login.SerializeToString()
     return  await encrypted_proto(string)
 
-async def MajorLogin(payload):
-    url = "https://loginbp.ppmainecoonghj.com/MajorLogin"
+async def MajorLogin(payload, region="OTHERS"):
+    url = f"{server_url(region)}/MajorLogin"
     ssl_context = ssl.create_default_context()
     ssl_context.check_hostname = False
     ssl_context.verify_mode = ssl.CERT_NONE
@@ -452,13 +452,14 @@ async def TcPChaT(ip, port, AutHToKen, key, iv, LoGinDaTaUncRypTinG, ready_event
 
 async def MaiiiinE():
     Uid , Pw = '4213341828','WIND-0GAT2HKEN-X'
+    region = "OTHERS"
     
 
     open_id , access_token = await GeNeRaTeAccEss(Uid , Pw)
     if not open_id or not access_token: print("ErroR - InvaLid AccounT") ; return None
     
-    PyL = await EncRypTMajoRLoGin(open_id , access_token)
-    MajoRLoGinResPonsE = await MajorLogin(PyL)
+    PyL = await EncRypTMajoRLoGin(open_id , access_token , region)
+    MajoRLoGinResPonsE = await MajorLogin(PyL, region)
     if not MajoRLoGinResPonsE: print("TarGeT AccounT => BannEd / NoT ReGisTeReD ! ") ; return None
     
     MajoRLoGinauTh = await DecRypTMajoRLoGin(MajoRLoGinResPonsE)
@@ -485,7 +486,7 @@ async def MaiiiinE():
     acc_name = LoGinDaTaUncRypTinG.AccountName
     #print(acc_name)
     print(ToKen)
-    equie_emote(ToKen,UrL)
+    equie_emote(ToKen,UrL,region)
     AutHToKen = await xAuThSTarTuP(int(TarGeT) , ToKen , int(timestamp) , key , iv)
     ready_event = asyncio.Event()
     

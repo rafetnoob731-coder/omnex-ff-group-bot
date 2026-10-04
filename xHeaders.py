@@ -8,6 +8,75 @@ from threading import Thread
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning) 
 
+# ═══════════════════════════════════════════════════════════
+#  REGION → ENDPOINT CONFIG
+# ═══════════════════════════════════════════════════════════
+# The old hosts (loginbp.ggblueshark.com / clientbp.common.ggbluefox.com)
+# are dead. Region decides which CLIENT host to talk to; the login SERVER
+# is currently the same for every region.
+
+REGION_CONFIG = {
+    "IND": {
+        "client_url": "https://client.ind.freefiremobile.com/",
+        "server_url": "https://loginbp.ppmainecoonghj.com/",
+        "release_version": "OB55",
+        "client_version": "1.132.9",
+    },
+    "AMERICA": {
+        "client_url": "https://client.us.freefiremobile.com/",
+        "server_url": "https://loginbp.ppmainecoonghj.com/",
+        "release_version": "OB55",
+        "client_version": "1.132.9",
+    },
+    "OTHERS": {
+        "client_url": "https://clientbp.ppmainecoonghj.com/",
+        "server_url": "https://loginbp.ppmainecoonghj.com/",
+        "release_version": "OB55",
+        "client_version": "1.132.9",
+    },
+}
+
+# IND has its own client; the Americas share one; everything else (BD, PK,
+# SG, ID, TH, VN, TW, ME, RU, ...) falls back to the OTHERS client.
+REGION_ALIASES = {
+    "IND": "IND", "IN": "IND",
+    "BR": "AMERICA", "US": "AMERICA", "NA": "AMERICA",
+    "SAC": "AMERICA", "AMERICA": "AMERICA",
+}
+
+
+def normalize_region(region):
+    """Map any region string onto IND / AMERICA / OTHERS."""
+    key = str(region or "").strip().upper()
+    return REGION_ALIASES.get(key, "OTHERS")
+
+
+def _netloc(url):
+    """https://host/ -> host  (used for the Host header)."""
+    return re.sub(r"^https?://", "", str(url)).split("/")[0]
+
+
+def client_host(region="OTHERS"):
+    """Host header for API calls in this region."""
+    return _netloc(REGION_CONFIG[normalize_region(region)]["client_url"])
+
+
+def client_url(region="OTHERS"):
+    return REGION_CONFIG[normalize_region(region)]["client_url"]
+
+
+def server_url(region="OTHERS"):
+    """Base URL for MajorLogin (no trailing slash)."""
+    return REGION_CONFIG[normalize_region(region)]["server_url"].rstrip("/")
+
+
+def client_version(region="OTHERS"):
+    return REGION_CONFIG[normalize_region(region)]["client_version"]
+
+
+def release_version(region="OTHERS"):
+    return REGION_CONFIG[normalize_region(region)]["release_version"] 
+
 def ToK():
     while True:
         try:
@@ -27,7 +96,7 @@ Thread(target=ToK , daemon = True).start()
 
 
 
-def equie_emote(JWT,url):
+def equie_emote(JWT,url,region="OTHERS"):
     url = f"{url}/ChooseEmote"
 
     headers = {
@@ -36,8 +105,9 @@ def equie_emote(JWT,url):
         "Connection": "Keep-Alive",
         "Content-Type": "application/x-www-form-urlencoded",
         "Expect": "100-continue",
-        #"Host": "clientbp.ppmainecoonghj.com",
-        "ReleaseVersion": "OB55",
+        "Host": client_host(region),
+        "ReleaseVersion": release_version(region),
+        "ClientVersion": client_version(region),
         "User-Agent": "Dalvik/2.1.0 (Linux; U; Android 13; CPH2095 Build/RKQ1.211119.001)",
         "X-GA": "v1 1",
         "X-Unity-Version": "2018.4.12f1",
@@ -69,18 +139,19 @@ def Requests_SPam(id):
     if Api.status_code in [200, 201] and '[SuccessFuLy] -> SenDinG Spam ReQuesTs !' in Api.text: return True
     else: return False
 
-def GeT_Name(uid , Token):
+def GeT_Name(uid , Token , region="OTHERS"):
     data = bytes.fromhex(EnC_AEs(f"08{EnC_Uid(uid , Tp = 'Uid')}1007"))
-    url = "https://clientbp.ppmainecoonghj.com/GetPlayerPersonalShow"
+    url = client_url(region) + "GetPlayerPersonalShow"
     headers = {
         'X-Unity-Version': '2018.4.12f1',
-        'ReleaseVersion': 'OB55',
+        'ReleaseVersion': release_version(region),
+        'ClientVersion': client_version(region),
         'Content-Type': 'application/x-www-form-urlencoded',
         'X-GA': 'v1 1',
         'Authorization': f'Bearer {GeTToK()}',
         'Content-Length': '16',
         'User-Agent': 'Dalvik/2.1.0 (Linux; U; Android 13; CPH2095 Build/RKQ1.211119.001)',
-        'Host': 'clientbp.ppmainecoonghj.com',
+        'Host': client_host(region),
         'Connection': 'Keep-Alive',
         'Accept-Encoding': 'gzip'
     }
@@ -94,18 +165,19 @@ def GeT_Name(uid , Token):
         except: return ''  
     else: return ''
             	  	
-def GeT_PLayer_InFo(uid , Token):
+def GeT_PLayer_InFo(uid , Token , region="OTHERS"):
     data = bytes.fromhex(EnC_AEs(f"08{EnC_Uid(uid , Tp = 'Uid')}1007"))
-    url = "https://clientbp.ppmainecoonghj.com/GetPlayerPersonalShow"
+    url = client_url(region) + "GetPlayerPersonalShow"
     headers = {
         'X-Unity-Version': '2018.4.12f1',
-        'ReleaseVersion': 'OB55',
+        'ReleaseVersion': release_version(region),
+        'ClientVersion': client_version(region),
         'Content-Type': 'application/x-www-form-urlencoded',
         'X-GA': 'v1 1',
         'Authorization': f'Bearer {GeTToK()}',
         'Content-Length': '16',
         'User-Agent': 'Dalvik/2.1.0 (Linux; U; Android 13; CPH2095 Build/RKQ1.211119.001)',
-        'Host': 'clientbp.ppmainecoonghj.com',
+        'Host': client_host(region),
         'Connection': 'Keep-Alive',
         'Accept-Encoding': 'gzip'}
     response = requests.post(url , headers=headers , data=data ,verify=False)
@@ -183,18 +255,19 @@ def GeT_PLayer_InFo(uid , Token):
     else:
         return f'\n[b][c][FFD700]FaiLEd GeTinG PLayer InFo !\n'
     
-def DeLet_Uid(id , Tok):
+def DeLet_Uid(id , Tok , region="OTHERS"):
     print(f' Done FuckinG > {id} ')
-    url = 'https://clientbp.ppmainecoonghj.com/RemoveFriend'
+    url = client_url(region) + 'RemoveFriend'
     headers = {
         'X-Unity-Version': '2018.4.12f1',
-        'ReleaseVersion': 'OB55',
+        'ReleaseVersion': release_version(region),
+        'ClientVersion': client_version(region),
         'Content-Type': 'application/x-www-form-urlencoded',
         'X-GA': 'v1 1',
         'Authorization': f'Bearer {Tok}',
         'Content-Length': '16',
         'User-Agent': 'Dalvik/2.1.0 (Linux; U; Android 13; CPH2095 Build/RKQ1.211119.001)',
-        'Host': 'clientbp.ppmainecoonghj.com',
+        'Host': client_host(region),
         'Connection': 'Keep-Alive',
         'Accept-Encoding': 'gzip'}
     data = bytes.fromhex(EnC_AEs(f"08a7c4839f1e10{EnC_Uid(id , Tp = 'Uid')}"))
