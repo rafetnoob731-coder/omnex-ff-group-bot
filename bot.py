@@ -535,27 +535,55 @@ async def encrypted_proto(encoded_hex):
     return encrypted_payload
     
 async def GeNeRaTeAccEss(uid , password):
-    url = "https://100067.connect.garena.com/oauth/guest/token/grant"
-    headers = {
-        "Host": "100067.connect.garena.com",
-        "User-Agent": (await Ua()),
-        "Content-Type": "application/x-www-form-urlencoded",
-        "Accept-Encoding": "gzip, deflate, br",
-        "Connection": "close"}
+    """Always returns (open_id, access_token) or (None, None).
+    Never return a bare string — callers do: open_id, access_token = await GeNeRaTeAccEss(...)
+    which raises "too many values to unpack (expected 2)" on a string.
+    """
+    urls = [
+        "https://ffmconnect.ppmainecoonghj.com/oauth/guest/token/grant",
+        "https://100067.connect.garena.com/oauth/guest/token/grant",
+    ]
     data = {
-        "uid": uid,
+        "uid": str(uid),
         "password": password,
         "response_type": "token",
         "client_type": "2",
         "client_secret": "2ee44819e9b4598845141067b281621874d0d5d7af9d8f7e00c1e54715b7d1e3",
-        "client_id": "100067"}
+        "client_id": "100067",
+    }
+    headers_base = {
+        "User-Agent": await Ua(),
+        "Content-Type": "application/x-www-form-urlencoded",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Connection": "close",
+    }
+    last_err = ""
     async with aiohttp.ClientSession() as session:
-        async with session.post(url, headers=Hr, data=data) as response:
-            if response.status != 200: return "Failed to get access token"
-            data = await response.json()
-            open_id = data.get("open_id")
-            access_token = data.get("access_token")
-            return (open_id, access_token) if open_id and access_token else (None, None)
+        for url in urls:
+            try:
+                headers = dict(headers_base)
+                headers["Host"] = url.split("/")[2]
+                async with session.post(url, headers=headers, data=data, ssl=False) as response:
+                    body = await response.text()
+                    if response.status != 200:
+                        last_err = f"http_{response.status}"
+                        continue
+                    try:
+                        js = json.loads(body)
+                    except Exception:
+                        last_err = "bad_json"
+                        continue
+                    open_id = js.get("open_id")
+                    access_token = js.get("access_token")
+                    if open_id and access_token:
+                        return open_id, access_token
+                    last_err = str(js.get("error") or js.get("message") or "no_token")[:60]
+            except Exception as e:
+                last_err = type(e).__name__
+                continue
+    print(f"[OMNEX] OAuth failed: {last_err}")
+    return None, None
+
 
 async def EncRypTMajoRLoGin(open_id, access_token, region="OTHERS"):
     major_login = MajoRLoGinrEq_pb2.MajorLogin()
@@ -938,9 +966,15 @@ async def MaiiiinE():
     print(f"[OMNEX] Using account id={acc['id']} uid={Uid} region={acc['region']}")
     print(f"[OMNEX] Region group {normalize_region(region)} · client {client_host(region)}")
 
-    open_id, access_token = await GeNeRaTeAccEss(Uid, Pw)
+    result = await GeNeRaTeAccEss(Uid, Pw)
+    if not isinstance(result, (tuple, list)) or len(result) != 2:
+        print(f"[OMNEX] OAuth bad return type: {type(result).__name__} {result!r}")
+        await asyncio.sleep(5)
+        return None
+    open_id, access_token = result
     if not open_id or not access_token:
-        print("[OMNEX] Invalid account credentials")
+        print("[OMNEX] Invalid account credentials / OAuth failed")
+        await asyncio.sleep(5)
         return None
 
     PyL = await EncRypTMajoRLoGin(open_id, access_token, region)
@@ -1015,9 +1049,15 @@ async def StarTinG():
         try:
             await asyncio.wait_for(MaiiiinE(), timeout=7 * 60 * 60)
         except asyncio.TimeoutError:
-            print("Token ExpiRed ! , ResTartinG")
+            print("[OMNEX] Token expired — restarting")
         except Exception as e:
+            import traceback
             print(f"ErroR TcP - {e} => ResTarTinG ...")
+            if "too many values to unpack" in str(e):
+                print("[OMNEX] Hint: OAuth returned a string instead of (open_id, access_token)")
+            traceback.print_exc()
+            await asyncio.sleep(3)
+
 
 async def main():
     """Main function to run everything together"""
