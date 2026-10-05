@@ -82,6 +82,11 @@ OAUTH_RATE_LIMITED = False
 OAUTH_RETRY_AFTER = 0
 # Last failure reason, so /status can explain itself instead of only "Connecting".
 LAST_ERROR = "none yet"
+# When Garena answers "Protection Bypass" the account is flagged. Retrying
+# every few seconds keeps it flagged and can extend the block, so we pause
+# all login attempts for a while instead.
+PROTECTION_BYPASS_COOLDOWN = 3600
+BLOCKED_UNTIL = 0.0
 #------------------------------------------#
 
 
@@ -780,6 +785,8 @@ async def MajorLogin(payload, region="OTHERS", access_token=None):
             detail = ""
             if b"Protection Bypass" in body:
                 detail = "Protection Bypass (account flagged by Garena)"
+                global BLOCKED_UNTIL
+                BLOCKED_UNTIL = time.time() + PROTECTION_BYPASS_COOLDOWN
             else:
                 preview = body[:80].decode("utf-8", "replace").replace("\n", " ")
                 detail = f"body={preview!r}"
@@ -1302,6 +1309,14 @@ async def MaiiiinE():
 async def StarTinG():
     delay = 5
     while True:
+        # Respect the cooldown after a Protection Bypass response, otherwise
+        # repeated attempts keep the accounts flagged.
+        while time.time() < BLOCKED_UNTIL:
+            left = int(BLOCKED_UNTIL - time.time())
+            mins = left // 60
+            print(f"[OMNEX] Accounts flagged by Garena - pausing logins for ~{mins}m")
+            _set_last_error(f"Protection Bypass cooldown, ~{mins}m left")
+            await asyncio.sleep(min(300, max(5, left)))
         waited = 0
         try:
             await asyncio.wait_for(MaiiiinE(), timeout=7 * 60 * 60)
