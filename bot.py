@@ -84,8 +84,12 @@ OAUTH_RETRY_AFTER = 0
 LAST_ERROR = "none yet"
 # When Garena answers "Protection Bypass" the account is flagged. Retrying
 # every few seconds keeps it flagged and can extend the block, so we pause
-# all login attempts for a while instead.
-PROTECTION_BYPASS_COOLDOWN = 3600
+# all login attempts for a while instead. Configurable because the block
+# appears to be IP/reputation based, not purely per-account.
+try:
+    PROTECTION_BYPASS_COOLDOWN = int(os.environ.get("PROTECTION_COOLDOWN_SECS", "21600"))
+except ValueError:
+    PROTECTION_BYPASS_COOLDOWN = 21600
 BLOCKED_UNTIL = 0.0
 #------------------------------------------#
 
