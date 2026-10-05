@@ -784,10 +784,102 @@ async def GetLoginData(base_url, payload, token):
             if response.status == 200: return await response.read()
             return None
 
+class MajorLoginRes:
+    """MajorLoginRes decoded by hand.
+
+    The bundled Pb2/MajoRLoGinrEs_pb2.py schema cannot parse the live response:
+    the body is a 64-byte header followed by protobuf, so ParseFromString
+    raises "Wire format was corrupt". Field numbers below were read from a real
+    response captured by ff_login.py.
+    """
+
+    __slots__ = ("account_uid", "region", "token", "url", "key", "iv", "timestamp")
+
+    def __init__(self, **kw):
+        for name in self.__slots__:
+            setattr(self, name, kw.get(name))
+
+
+def _decode_pb_fields(buf: bytes) -> dict:
+    """Minimal protobuf wire-format reader -> {field_number: value}."""
+    out = {}
+    i, n = 0, len(buf)
+    while i < n:
+        key = 0
+        shift = 0
+        while True:
+            if i >= n:
+                return out
+            b0 = buf[i]
+            i += 1
+            key |= (b0 & 0x7F) << shift
+            shift += 7
+            if not b0 & 0x80:
+                break
+        field_no, wire = key >> 3, key & 7
+        if field_no == 0:
+            break
+        try:
+            if wire == 0:
+                val = 0
+                shift = 0
+                while True:
+                    b0 = buf[i]
+                    i += 1
+                    val |= (b0 & 0x7F) << shift
+                    shift += 7
+                    if not b0 & 0x80:
+                        break
+                out[field_no] = val
+            elif wire == 2:
+                ln = 0
+                shift = 0
+                while True:
+                    b0 = buf[i]
+                    i += 1
+                    ln |= (b0 & 0x7F) << shift
+                    shift += 7
+                    if not b0 & 0x80:
+                        break
+                out[field_no] = buf[i:i + ln]
+                i += ln
+            elif wire == 5:
+                i += 4
+            elif wire == 1:
+                i += 8
+            else:
+                break
+        except IndexError:
+            break
+    return out
+
+
+# The MajorLogin response body starts with this many bytes of header before
+# the protobuf payload begins.
+MAJORLOGIN_RES_HEADER = 64
+
+
 async def DecRypTMajoRLoGin(MajoRLoGinResPonsE):
-    proto = MajoRLoGinrEs_pb2.MajorLoginRes()
-    proto.ParseFromString(MajoRLoGinResPonsE)
-    return proto
+    body = MajoRLoGinResPonsE or b""
+    # Try the documented offset first, then a few others, in case it changes.
+    for offset in (MAJORLOGIN_RES_HEADER, 0, 4, 8, 16, 32, 64):
+        if offset >= len(body):
+            continue
+        f = _decode_pb_fields(body[offset:])
+        token = f.get(8)
+        if isinstance(token, bytes) and token.count(b".") == 2:
+            return MajorLoginRes(
+                account_uid=str(f.get(1, "")),
+                region=(f.get(2) or b"").decode("utf-8", "replace") or None,
+                token=token.decode("utf-8", "replace"),
+                url=(f.get(10) or b"").decode("utf-8", "replace").rstrip("/"),
+                key=f.get(22) or b"",
+                iv=f.get(23) or b"",
+                timestamp=str(f.get(21, "")),
+            )
+    raise ValueError(
+        f"could not locate MajorLoginRes payload in {len(body)} bytes"
+    )
 
 async def DecRypTLoGinDaTa(LoGinDaTa):
     proto = PorTs_pb2.GetLoginData()
