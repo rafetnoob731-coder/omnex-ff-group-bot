@@ -376,7 +376,7 @@ async def process_telegram_command(update):
         return
 
     # ── ADMIN GATE for remaining ──
-    if cmd in ("/add", "/del", "/accounts", "/use", "/admins", "/refresh"):
+    if cmd in ("/add", "/del", "/accounts", "/use", "/admins", "/refresh", "/dumpacc"):
         if not is_admin(user_id):
             await send_telegram_message(chat_id, "🔒 Admin only")
             return
@@ -423,6 +423,23 @@ async def process_telegram_command(update):
             f"Region · <code>{reg}</code>\n"
             f"File · <code>acc.txt</code>"
         )
+        return
+
+    # ── /dumpacc ──
+    # acc.txt lives in the container filesystem, so /add is lost on restart.
+    # /dumpacc prints the live contents so they can be committed to the repo.
+    if cmd == "/dumpacc":
+        if not is_admin(user_id):
+            await send_telegram_message(chat_id, "🔒 Admin only")
+            return
+        live = load_accounts()
+        if not live:
+            await send_telegram_message(chat_id, "No accounts in acc.txt")
+            return
+        body = "\n".join(f"{a['id']}=|{a['uid']}|{a['password']}|{a['region']}" for a in live)
+        note = "\n\n⚠️ Copy these lines into acc.txt in the repo to make them permanent."
+        esc = lambda s: (str(s).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
+        await send_telegram_message(chat_id, f"<b>acc.txt (live)</b>\n<pre>{esc(body)}</pre>{esc(note)}")
         return
 
     # ── /del ID ──
@@ -705,14 +722,46 @@ async def EncRypTMajoRLoGin(open_id, access_token, region="OTHERS"):
     string += _encode_pb_field(105, 1)          # flag
     return  await encrypted_proto(string)
 
-async def MajorLogin(payload, region="OTHERS"):
+def major_login_headers(access_token, region="OTHERS"):
+    """Headers for MajorLogin.
+
+    The shared Hr dict is wrong for this call: it declares
+    x-www-form-urlencoded and omits Authorization / X-GA-SV / Host, while the
+    body is an AES-encrypted binary blob. ff_login.py sends these and is
+    accepted; the bot was rejected.
+    """
+    return {
+        "User-Agent": "Dalvik/2.1.0 (Linux; U; Android 13; CPH2095 Build/RKQ1.211119.001)",
+        "Accept-Encoding": "deflate, gzip",
+        "X-GA-SV": "1789535859",
+        "Authorization": f"Bearer {access_token}",
+        "X-GA": "v1 1",
+        "ReleaseVersion": "OB55",
+        "Content-Type": "application/octet-stream",
+        "X-Unity-Version": "2018.4.12f1",
+        "Host": _netloc(server_url(region)),
+    }
+
+
+async def MajorLogin(payload, region="OTHERS", access_token=None):
     url = f"{server_url(region)}/MajorLogin"
+    headers = major_login_headers(access_token or "", region)
     ssl_context = ssl.create_default_context()
     ssl_context.check_hostname = False
     ssl_context.verify_mode = ssl.CERT_NONE
     async with aiohttp.ClientSession() as session:
-        async with session.post(url, data=payload, headers=Hr, ssl=ssl_context) as response:
-            if response.status == 200: return await response.read()
+        async with session.post(url, data=payload, headers=headers, ssl=ssl_context) as response:
+            body = await response.read()
+            if response.status == 200:
+                return body
+            # Surface why, instead of a bare "banned/unregistered".
+            detail = ""
+            if b"Protection Bypass" in body:
+                detail = "Protection Bypass (account flagged by Garena)"
+            else:
+                preview = body[:80].decode("utf-8", "replace").replace("\n", " ")
+                detail = f"body={preview!r}"
+            print(f"[OMNEX] MajorLogin HTTP {response.status} · {detail}")
             return None
 
 async def GetLoginData(base_url, payload, token):
@@ -1049,7 +1098,7 @@ async def MaiiiinE():
         # rejected by MajorLogin, so the whole sequence must fall through.
         try:
             PyL = await EncRypTMajoRLoGin(o_id, a_tok, cand_region)
-            res = await MajorLogin(PyL, cand_region)
+            res = await MajorLogin(PyL, cand_region, a_tok)
         except Exception as e:
             print(f"[OMNEX] Login error for {label}: {e} — trying next")
             continue
