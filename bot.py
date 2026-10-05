@@ -618,6 +618,24 @@ async def GeNeRaTeAccEss(uid , password):
     return None, None
 
 
+def _encode_pb_varint(value: int) -> bytes:
+    out = bytearray()
+    while True:
+        b = value & 0x7F
+        value >>= 7
+        out.append(b | (0x80 if value else 0))
+        if not value:
+            return bytes(out)
+
+
+def _encode_pb_field(number: int, value) -> bytes:
+    """Encode one protobuf field by hand (int -> varint, str -> length-delimited)."""
+    if isinstance(value, int):
+        return _encode_pb_varint(number << 3) + _encode_pb_varint(value)
+    raw = str(value).encode("utf-8")
+    return _encode_pb_varint((number << 3) | 2) + _encode_pb_varint(len(raw)) + raw
+
+
 async def EncRypTMajoRLoGin(open_id, access_token, region="OTHERS"):
     major_login = MajoRLoGinrEq_pb2.MajorLogin()
     major_login.event_time = str(datetime.now())[:-7]
@@ -670,7 +688,7 @@ async def EncRypTMajoRLoGin(open_id, access_token, region="OTHERS"):
     major_login.login_open_id_type = 4
     major_login.analytics_detail = b"FwQVTgUPX1UaUllDDwcWCRBpWAUOUgsvA1snWlBaO1kFYg=="
     major_login.loading_time = 13564
-    major_login.release_channel = "android"
+    major_login.release_channel = "android_max"
     major_login.extra_info = "KqsHTymw5/5GB23YGniUYN2/q47GATrq7eFeRatf0NkwLKEMQ0PK5BKEk72dPflAxUlEBir6Vtey83XqF593qsl8hwY="
     major_login.android_engine_init_flag = 110009
     major_login.if_push = 1
@@ -678,6 +696,13 @@ async def EncRypTMajoRLoGin(open_id, access_token, region="OTHERS"):
     major_login.origin_platform_type = "4"
     major_login.primary_platform_type = "4"
     string = major_login.SerializeToString()
+    # The bundled Pb2/MajoRLoGinrEq_pb2.py is an OLD MajorLogin schema. It has
+    # no fields 26 / 104 / 105, but the live server expects them — ff_login.py
+    # sends them and authenticates fine, while this bot was rejected. Protobuf
+    # permits unknown trailing fields, so append them by hand.
+    string += _encode_pb_field(26, region)      # region, e.g. "IND"
+    string += _encode_pb_field(104, 77149)      # build code
+    string += _encode_pb_field(105, 1)          # flag
     return  await encrypted_proto(string)
 
 async def MajorLogin(payload, region="OTHERS"):
