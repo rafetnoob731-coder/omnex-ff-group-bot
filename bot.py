@@ -722,6 +722,15 @@ async def EncRypTMajoRLoGin(open_id, access_token, region="OTHERS"):
     string += _encode_pb_field(105, 1)          # flag
     return  await encrypted_proto(string)
 
+def _netloc(url):
+    """https://host/path -> host.
+
+    Defined here too: `from xHeaders import *` does NOT import names that
+    start with an underscore, so xHeaders._netloc is invisible in this module.
+    """
+    return re.sub(r"^https?://", "", str(url)).split("/")[0]
+
+
 def major_login_headers(access_token, region="OTHERS"):
     """Headers for MajorLogin.
 
