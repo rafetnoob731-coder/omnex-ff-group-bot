@@ -80,7 +80,19 @@ ACTIVE_ACC_ID = None
 # off instead of hammering the endpoint and making the throttle worse.
 OAUTH_RATE_LIMITED = False
 OAUTH_RETRY_AFTER = 0
+# Last failure reason, so /status can explain itself instead of only "Connecting".
+LAST_ERROR = "none yet"
 #------------------------------------------#
+
+
+def _esc(text):
+    """Escape for Telegram HTML."""
+    return (str(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;"))
+
+
+def _set_last_error(msg):
+    global LAST_ERROR
+    LAST_ERROR = str(msg)[:180]
 
 # ═══════════════════════════════════════════════════════════
 #  MULTI-ACCOUNT · acc.txt
@@ -329,7 +341,8 @@ async def process_telegram_command(update):
             f"Region · <code>{region or '—'}</code>\n"
             f"Bot UID · <code>{BOT_UID or '—'}</code>\n"
             f"Active Acc · <code>{acc_line}</code>\n"
-            f"Client · <code>OB55 · v1.1</code>"
+            f"Client · <code>OB55 · v1.1</code>\n"
+            f"Last Err · <code>{_esc(str(LAST_ERROR))}</code>"
         )
         return
 
@@ -1200,22 +1213,27 @@ async def MaiiiinE():
         try:
             PyL = await EncRypTMajoRLoGin(o_id, a_tok, cand_region)
             res = await MajorLogin(PyL, cand_region, a_tok)
+            if not res:
+                print(f"[OMNEX] MajorLogin rejected {label} — trying next")
+                _set_last_error(f"id={candidate['id']} MajorLogin rejected")
+                continue
+            # Decode inside the try: a bad payload must not abort the whole
+            # loop and skip the remaining accounts.
+            decoded = await DecRypTMajoRLoGin(res)
         except Exception as e:
             print(f"[OMNEX] Login error for {label}: {e} — trying next")
-            continue
-
-        if not res:
-            print(f"[OMNEX] MajorLogin rejected {label} (banned/unregistered) — trying next")
+            _set_last_error(f"id={candidate['id']} {e}")
             continue
 
         acc = candidate
-        MajoRLoGinauTh = await DecRypTMajoRLoGin(res)
+        MajoRLoGinauTh = decoded
         break
 
     if acc is None or MajoRLoGinauTh is None:
         print("[OMNEX] No account could complete login")
         return None
 
+    _set_last_error("none — login OK")
     ACTIVE_ACC_ID = str(acc["id"])
     Uid, Pw = acc["uid"], acc["password"]
     region = acc.get("region", "OTHERS")
@@ -1292,8 +1310,7 @@ async def StarTinG():
         except Exception as e:
             import traceback
             print(f"ErroR TcP - {e} => ResTarTinG ...")
-            if "too many values to unpack" in str(e):
-                print("[OMNEX] Hint: OAuth returned a string instead of (open_id, access_token)")
+            _set_last_error(e)
             traceback.print_exc()
 
         if OAUTH_RATE_LIMITED:
